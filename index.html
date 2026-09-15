@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سامانه رسمی استعلام و تسویه دیون دونات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- فونت‌ها -->
+  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/misc/Farsi-Digits/Vazirmatn-FD-font-face.css" rel="stylesheet" type="text/css" />
+  <link href="https://cdn.jsdelivr.net/gh/rastikerdar/sahel-font@v3.4.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+  <link href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Vazirmatn FD', sans-serif; }
+    .font-official-title { font-family: 'Lalezar', cursive; }
+    .font-official-doc { 
+      font-family: 'Sahel', 'Vazirmatn FD', serif; 
+      line-height: 2.1;
+    }
+    .stamp {
+      border: 3px dashed #e11d48;
+      color: #e11d48;
+      transform: rotate(-9deg);
+      display: inline-block;
+      padding: 0.25rem 1.25rem;
+      border-radius: 12px;
+      letter-spacing: 1px;
+    }
+    .shake {
+      animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+      40%, 60% { transform: translate3d(3px, 0, 0); }
+    }
+    /* استایل اختصاصی اسلایدر تایم‌لاین */
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #f59e0b;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-md bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-3xl shadow-2xl p-6 relative">
+    
+    <!-- سربرگ اداری -->
+    <div class="text-center border-b border-slate-800 pb-4 mb-5">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 text-3xl mb-2 border border-amber-500/20 shadow-inner">
+        🍩
+      </div>
+      <h1 class="text-lg font-black bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent">
+        سامانه احراز و حل‌وفصل مطالبات دونات
+      </h1>
+      <p class="text-[11px] text-slate-400 mt-1">پرونده حقوقی شماره: DN-9942-IR</p>
+    </div>
+
+    <!-- مرحله ۱: پذیرش بدهی -->
+    <div id="step-1" class="space-y-4">
+      <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60 text-sm leading-relaxed text-slate-300">
+        مخاطب گرامی، پیرو اظهارات ثبت‌شده در دایرکت، بدهی قطعی <span class="text-amber-400 font-bold">۱ عدد دونات</span> با اعمال نرخ سود تأخیر ماهانه <span class="text-rose-400 font-bold">۲۳٪</span> محرز گردیده است.
+        <div class="mt-3 text-white font-medium">آیا تعهد و استحقاق فوق را تأیید می‌نمایید؟</div>
+      </div>
+
+      <!-- دکمه پذیرش سبز ثابت -->
+      <button id="btn-accept" onclick="goToStep(2)" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-2xl transition shadow-lg shadow-emerald-950/40 cursor-pointer">
+        بله، موظف به پرداخت هستم ✅
+      </button>
+
+      <!-- محدوده نامرئی و بی‌حاشیه فرار دکمه قرمز -->
+      <div id="dodge-arena" class="relative h-16 flex items-center justify-center overflow-hidden">
+        <button id="btn-deny" onmouseover="dodgeButton()" onclick="dodgeButton()" class="absolute px-4 py-2 bg-rose-950/50 border border-rose-600/40 text-rose-300 font-medium rounded-xl text-xs transition-all duration-150 select-none cursor-pointer">
+          انکار و رد ادعا ❌
+        </button>
+      </div>
+      
+      <p id="dodge-hint" class="text-[11px] text-center text-rose-400 font-medium hidden">خطای سیستمی: فرار از ادای دین امکان‌پذیر نیست!</p>
+    </div>
+
+    <!-- مرحله ۲: تقویم شمسی + تایم‌لاین انتخابی ساعت -->
+    <div id="step-2" class="space-y-4 hidden">
+      <!-- انتخاب تاریخ -->
+      <div>
+        <p class="text-xs text-slate-300 mb-2">
+          تاریخ حضور را شخصاً تعیین کنید (تا ۲ هفته آینده معتبر است):
+        </p>
+        <div id="shamsi-dates" class="flex gap-2 overflow-x-auto pb-2 pt-1 select-none"></div>
+      </div>
+
+      <!-- تایم‌لاین مدرن انتخاب ساعت -->
+      <div class="bg-slate-800/40 border border-slate-700/60 p-3 rounded-2xl space-y-2">
+        <div class="flex justify-between items-center text-xs">
+          <span class="text-slate-300 font-medium">ساعت حضور:</span>
+          <span id="timeline-display" class="font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+            ساعت ۱۶:۰۰ عصر
+          </span>
+        </div>
+        <input 
+          type="range" 
+          id="time-slider" 
+          min="20" 
+          max="42" 
+          step="1" 
+          value="32" 
+          oninput="updateTimeSlider(this.value)"
+          class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+        >
+        <div class="flex justify-between text-[10px] text-slate-500 font-medium px-1">
+          <span>۱۰:۰۰ صبح</span>
+          <span>۱۵:۳۰ عصر</span>
+          <span>۲۱:۰۰ شب</span>
+        </div>
+      </div>
+
+      <p id="date-alert" class="text-[11px] text-amber-400/90 font-medium hidden">لطفاً یک تاریخ را از لیست انتخاب کنید.</p>
+
+      <!-- گزینه‌ها -->
+      <div class="space-y-2 pt-1">
+        <label class="block text-xs font-semibold text-slate-400">بسته پذیرایی در موعد مقرر:</label>
+        
+        <button type="button" onclick="handleOptionClick(this, false)" class="option-btn w-full p-3 bg-slate-800/80 border border-slate-700/80 rounded-2xl text-xs text-slate-200 hover:border-slate-500 transition flex justify-between items-center text-right">
+          <span>دونات ساده بدون نوشیدنی</span>
+          <span class="status-indicator text-slate-500 text-[11px]">انتخاب</span>
+        </button>
+
+        <button type="button" id="target-option" onclick="handleOptionClick(this, true)" class="option-btn w-full p-3 bg-slate-800/80 border border-slate-700/80 rounded-2xl text-xs text-slate-200 hover:border-slate-500 transition flex justify-between items-center text-right">
+          <span>دونات مغزدار شکلاتی به همراه قهوه</span>
+          <span class="status-indicator text-slate-500 text-[11px]">انتخاب</span>
+        </button>
+
+        <button type="button" onclick="handleOptionClick(this, false)" class="option-btn w-full p-3 bg-slate-800/80 border border-slate-700/80 rounded-2xl text-xs text-slate-200 hover:border-slate-500 transition flex justify-between items-center text-right">
+          <span>موکول به ترم‌های بعد</span>
+          <span class="status-indicator text-slate-500 text-[11px]">انتخاب</span>
+        </button>
+      </div>
+
+      <button id="btn-to-step-3" disabled onclick="validateAndGoToStep3()" class="w-full py-3 bg-slate-800 text-slate-500 font-bold rounded-2xl text-sm transition cursor-not-allowed">
+        مرحله بعد: تعهدنامه و امضا
+      </button>
+    </div>
+
+    <!-- مرحله ۳: کادر امضای حساس به خطوط -->
+    <div id="step-3" class="space-y-4 hidden">
+      <div class="text-xs text-slate-300 bg-slate-800/50 p-3 rounded-2xl border border-slate-700/50">
+        جهت نهایی‌سازی سند در سامانه، داخل کادر زیر امضا بزنید:
+      </div>
+
+      <div class="border-2 border-dashed border-slate-600 rounded-2xl overflow-hidden bg-slate-950/80 relative">
+        <canvas id="signature-pad" width="340" height="150" class="w-full cursor-crosshair touch-none"></canvas>
+        <button onclick="clearCanvas()" class="absolute bottom-2 left-2 text-[11px] bg-slate-800/90 text-slate-400 px-2 py-1 rounded-lg border border-slate-700">
+          پاک کردن
+        </button>
+      </div>
+
+      <div id="sig-feedback" class="text-xs text-center text-slate-500 transition-all">
+        ✍️ منتظر رسم امضا...
+      </div>
+
+      <button id="btn-submit-doc" disabled onclick="issueDocument()" class="w-full py-3 bg-slate-800 text-slate-500 font-black rounded-2xl text-sm transition cursor-not-allowed">
+        تأیید نهایی و بایگانی سند 📜
+      </button>
+    </div>
+
+    <!-- مرحله نهایی: سند رسمی با تاریخ و ساعت دقیق تایم‌لاین -->
+    <div id="step-final" class="space-y-4 hidden text-center">
+      <div class="p-6 bg-[#fffdfa] text-stone-900 rounded-2xl shadow-2xl text-right relative border border-amber-200/80">
+        <div class="text-center mb-4">
+          <div class="stamp font-official-title text-xl">تعهدنامه رسمی و قطعی</div>
+        </div>
+
+        <p class="font-official-doc text-sm text-stone-800 text-justify">
+          مخاطب متعهد شد در روز <strong id="doc-date" class="text-indigo-950 font-black underline underline-offset-4 decoration-amber-500"></strong> راس <strong id="doc-time" class="text-indigo-950 font-black underline underline-offset-4 decoration-amber-500"></strong> با تحویل بسته مصوب (دونات شکلاتی + قهوه) کلیه مطالبات و جرایم تأخیر را تسویه نماید. هرگونه اعتراض، انکار یا استناد به شوخی بودن مکالمات قبلی فاقد وجاهت بوده و به کلی باطل است.
+        </p>
+
+        <div class="mt-5 pt-4 border-t border-stone-200 flex justify-between items-end">
+          <div>
+            <p class="text-[11px] text-stone-500 font-medium">امضای رسمی متعهد:</p>
+            <img id="signed-img" class="h-14 border-b border-dashed border-stone-400 mt-1" alt="امضا" />
+          </div>
+          <div class="text-left">
+            <span class="inline-block px-2.5 py-1 bg-amber-100/70 border border-amber-300/60 rounded-md text-[10px] text-stone-600 font-mono">
+              ثبت: OK-<span id="doc-id"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div id="sync-status" class="text-xs text-slate-400 font-medium">
+        درحال ذخیره‌سازی ابری سند...
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ---------------- کلید اختصاصی Web3Forms ----------------
+    const WEB3FORMS_ACCESS_KEY = "7ef22f17-419e-4903-8097-b38ea31847e2";
+
+    // ---------------- متغیرها و اسلایدر زمان ----------------
+    let selectedShamsiDate = null;
+    let selectedTimeString = "ساعت ۱۶:۰۰ عصر";
+    const datesContainer = document.getElementById('shamsi-dates');
+
+    function updateTimeSlider(val) {
+      const totalMinutes = val * 30;
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      const minStr = minutes === 0 ? "۰۰" : minutes;
+      
+      let period = "صبح";
+      if (hours >= 12 && hours < 17) period = "ظهر/عصر";
+      if (hours >= 17) period = "عصر/شب";
+
+      selectedTimeString = `ساعت ${hours}:${minStr} ${period}`;
+      document.getElementById('timeline-display').innerText = selectedTimeString;
+      checkStep2Ready();
+    }
+
+    // ---------------- تقویم شمسی پویا ----------------
+    function initShamsiCalendar() {
+      if (datesContainer.children.length > 0) return;
+      const weekdays = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'];
+      const today = new Date();
+
+      for (let i = 1; i <= 14; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+
+        const formatter = new Intl.DateTimeFormat('fa-IR', { day: 'numeric', month: 'long' });
+        const shamsiStr = formatter.format(d);
+        const dayName = weekdays[d.getDay()];
+
+        const card = document.createElement('div');
+        card.className = "flex-shrink-0 cursor-pointer p-2.5 rounded-xl border border-slate-700 bg-slate-800/70 hover:border-amber-400 transition text-center min-w-[75px]";
+        card.innerHTML = `
+          <div class="text-[10px] text-slate-400">${dayName}</div>
+          <div class="text-xs font-bold text-amber-300 mt-0.5">${shamsiStr}</div>
+        `;
+        card.onclick = () => selectDate(card, `${dayName}، ${shamsiStr}`);
+        datesContainer.appendChild(card);
+      }
+    }
+
+    function selectDate(element, dateStr) {
+      document.querySelectorAll('#shamsi-dates > div').forEach(el => {
+        el.classList.remove('border-amber-400', 'bg-amber-500/20');
+        el.classList.add('border-slate-700', 'bg-slate-800/70');
+      });
+      element.classList.remove('border-slate-700', 'bg-slate-800/70');
+      element.classList.add('border-amber-400', 'bg-amber-500/20');
+
+      selectedShamsiDate = dateStr;
+      checkStep2Ready();
+    }
+
+    // ---------------- قفل گزینه‌ها ----------------
+    let targetChosen = false;
+    function handleOptionClick(btn, isTarget) {
+      if (!isTarget) {
+        btn.classList.add('shake', 'opacity-30', 'cursor-not-allowed', 'bg-rose-950/40', 'border-rose-900');
+        btn.querySelector('.status-indicator').textContent = 'نامعتبر ❌';
+        btn.disabled = true;
+      } else {
+        document.querySelectorAll('.option-btn').forEach(b => {
+          if (b !== btn) {
+            b.classList.add('opacity-20', 'cursor-not-allowed');
+            b.disabled = true;
+            b.querySelector('.status-indicator').textContent = 'قفل';
+          }
+        });
+        btn.classList.add('border-emerald-500', 'bg-emerald-950/40');
+        btn.querySelector('.status-indicator').textContent = 'تأیید شد ✔️';
+        btn.querySelector('.status-indicator').classList.replace('text-slate-500', 'text-emerald-400');
+        targetChosen = true;
+        checkStep2Ready();
+      }
+    }
+
+    function checkStep2Ready() {
+      const nextBtn = document.getElementById('btn-to-step-3');
+      if (selectedShamsiDate && targetChosen) {
+        document.getElementById('date-alert').classList.add('hidden');
+        nextBtn.disabled = false;
+        nextBtn.className = "w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-2xl text-sm transition shadow-lg shadow-amber-950 cursor-pointer";
+      }
+    }
+
+    function validateAndGoToStep3() {
+      if (!selectedShamsiDate) {
+        document.getElementById('date-alert').classList.remove('hidden');
+        return;
+      }
+      goToStep(3);
+    }
+
+    // ---------------- فرار دکمه انکار در محیط نامرئی ----------------
+    function dodgeButton() {
+      const btn = document.getElementById('btn-deny');
+      const arena = document.getElementById('dodge-arena');
+      const hint = document.getElementById('dodge-hint');
+      
+      hint.classList.remove('hidden');
+
+      const maxX = (arena.clientWidth - btn.offsetWidth) / 2 - 10;
+      const maxY = (arena.clientHeight - btn.offsetHeight) / 2 - 4;
+
+      const randomX = (Math.random() * 2 - 1) * maxX;
+      const randomY = (Math.random() * 2 - 1) * maxY;
+
+      btn.style.transform = `translate(${randomX}px, ${randomY}px)`;
+    }
+
+    // ---------------- کنترل مراحل ----------------
+    function goToStep(num) {
+      ['step-1', 'step-2', 'step-3', 'step-final'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(`step-${num}`).classList.remove('hidden');
+      if (num === 2) initShamsiCalendar();
+      if (num === 3) initSignaturePad();
+    }
+
+    // ---------------- بوم امضا ----------------
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let strokeCount = 0;
+
+    function initSignaturePad() {
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+      };
+
+      const start = (e) => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+      const draw = (e) => { 
+        if (!isDrawing) return; 
+        const p = getPos(e); 
+        ctx.lineTo(p.x, p.y); 
+        ctx.stroke(); 
+        strokeCount++;
+        if (strokeCount > 12) enableDocSubmit();
+      };
+      const stop = () => { isDrawing = false; };
+
+      canvas.addEventListener('mousedown', start);
+      canvas.addEventListener('mousemove', draw);
+      window.addEventListener('mouseup', stop);
+
+      canvas.addEventListener('touchstart', start);
+      canvas.addEventListener('touchmove', draw);
+      window.addEventListener('touchend', stop);
+    }
+
+    function enableDocSubmit() {
+      const feedback = document.getElementById('sig-feedback');
+      const submitBtn = document.getElementById('btn-submit-doc');
+      feedback.textContent = "✅ امضا در سامانه تأیید شد";
+      feedback.className = "text-xs text-center text-emerald-400 font-medium";
+
+      submitBtn.disabled = false;
+      submitBtn.className = "w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black rounded-2xl text-sm transition shadow-lg shadow-emerald-950 cursor-pointer";
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strokeCount = 0;
+      const feedback = document.getElementById('sig-feedback');
+      const submitBtn = document.getElementById('btn-submit-doc');
+      feedback.textContent = "✍️ منتظر رسم امضا...";
+      feedback.className = "text-xs text-center text-slate-500";
+      submitBtn.disabled = true;
+      submitBtn.className = "w-full py-3 bg-slate-800 text-slate-500 font-black rounded-2xl text-sm transition cursor-not-allowed";
+    }
+
+    // ---------------- ثبت نهایی و ارسال به ایمیل ----------------
+    function issueDocument() {
+      document.getElementById('doc-date').innerText = selectedShamsiDate;
+      document.getElementById('doc-time').innerText = selectedTimeString;
+      document.getElementById('doc-id').innerText = Math.floor(1000 + Math.random() * 9000);
+      document.getElementById('signed-img').src = canvas.toDataURL();
+
+      goToStep('final');
+
+      const payload = {
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject: "🍩 سند رسمی بدهی دونات امضا شد!",
+        from_name: "سامانه مطالبات دونات",
+        "تاریخ انتخابی بدهکار": selectedShamsiDate,
+        "ساعت انتخابی": selectedTimeString,
+        "سفارش انتخابی": "دونات مغزدار شکلاتی به همراه قهوه ☕🍩",
+        "وضعیت": "امضا با موفقیت تأیید و سند قطعی صادر گردید."
+      };
+
+      fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('sync-status').textContent = "سند در بایگانی مرکزی با موفقیت ثبت شد ✔️";
+          document.getElementById('sync-status').classList.add('text-emerald-400');
+        }
+      })
+      .catch(err => {
+        console.error("Sync Error:", err);
+        document.getElementById('sync-status').textContent = "سند رسماً صادر و نهایی گردید ✔️";
+      });
+    }
+  </script>
+</body>
+</html>
